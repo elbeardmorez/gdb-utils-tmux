@@ -10,7 +10,7 @@ from tempfile import NamedTemporaryFile as mktmp
 
 class cursor:
     left = '\033[1D'
-    reset = '\033[B\r\033[2K\r\033[A'
+    reset = '\033[K\033[1K\033[B\r\033[A\033[K\033[1K'
 
 
 def output_():
