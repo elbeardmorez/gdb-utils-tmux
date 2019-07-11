@@ -26,10 +26,19 @@ class utils:
             return raw_input()  # python 2
 
 
-class gdb_utils_tmux:
+class gdb_tmux:
 
-    def panes(self, session):
-        p = subprocess.Popen(["tmux", "list-panes", "-t", session], stdout=subprocess.PIPE)
+    @staticmethod
+    def session():
+        tmux_env = os.getenv("TMUX")
+        if not tmux_env:
+            print("non-tmux session")
+            return -1
+        return int(tmux_env.split(",")[-1])
+
+    @staticmethod
+    def panes(session_):
+        p = subprocess.Popen(["tmux", "list-panes", "-t", str(session_)], stdout=subprocess.PIPE)
         res = p.stdout.read().decode("utf8")
         #print(f"res: {res}")
         active = -1
@@ -42,14 +51,10 @@ class gdb_utils_tmux:
         #print(f"panes: {panes_}, active: {active}")
         return [active, panes_]
 
-    def output_(self):
-        session = os.getenv("TMUX").split(",")[-1]
-        if not session:
-            print("non-tmux session")
-            return -1
-
+    @staticmethod
+    def select_pane(session_):
         pane_id = ""
-        [active, panes_] = self.panes(session)
+        [active, panes_] = gdb_tmux.panes(session_)
         while True:
             sys.stdout.write(
                 f"[user] configure output pane, " +
@@ -80,15 +85,28 @@ class gdb_utils_tmux:
             # reset
             utils.reset_line()
 
+        return pane_id
+
+
+class gdb_utils_tmux:
+
+    def dashboard_output(self):
+        session_ = gdb_tmux.session()
+        if not session_:
+            print("non-tmux session")
+            return -1
+
+        pane_id = gdb_tmux.select_pane(session_)
         if not pane_id:
             print("[error] no valid pane id set for dashboard output")
             return
+
         res = ""
         f = mktmp(delete=False)
         fn = f.name
         f.close()
         # get tty
-        subprocess.call(["tmux", "send-keys", "-t", f"{session}.{pane_id}", f"stty -echo && tty 1>{fn} && reset", "ENTER"])
+        subprocess.call(["tmux", "send-keys", "-t", f"{session_}.{pane_id}", f"stty -echo && tty 1>{fn} && reset", "ENTER"])
         sleep(1)  # wait for terminal to complete its work
         f = open(fn, "r")
         res = f.read()
