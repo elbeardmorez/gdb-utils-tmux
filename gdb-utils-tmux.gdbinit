@@ -13,6 +13,10 @@ class utils:
         left = '\033[1D'
         reset = '\033[K\033[1K\033[B\r\033[A\033[K\033[1K'
 
+    @staticmethod
+    def reset_line():
+        sys.stdout.write(utils.cursor.reset)
+        sys.stdout.flush()
 
     @staticmethod
     def input_():
@@ -69,13 +73,12 @@ class gdb_utils_tmux:
                         break
 
                     # reset
-                    sys.stdout.write(utils.cursor.reset)
+                    utils.reset_line()
 
             if pane_id:
                 break
-
             # reset
-            sys.stdout.write(utils.cursor.reset)
+            utils.reset_line()
 
         if not pane_id:
             print("[error] no valid pane id set for dashboard output")
