@@ -71,6 +71,7 @@ class gdb_utils_tmux:
                     # reset
                     sys.stdout.write(utils.cursor.reset)
 
+            if pane_id:
                 break
 
             # reset
