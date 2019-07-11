@@ -14,6 +14,12 @@ class cursor:
 
 
 def output_():
+    def input_():
+        try:
+            return input()  # python 3
+        except:
+            return raw_input()  # python 2
+
     def panes(session):
         p = subprocess.Popen(["tmux", "list-panes", "-t", session], stdout=subprocess.PIPE)
         res = p.stdout.read().decode("utf8")
@@ -48,7 +54,7 @@ def output_():
                     sys.stdout.write("[user] enter pane # [#/c]:  ")
                     sys.stdout.write(cursor.left)
                     sys.stdout.flush()
-                    res2 = sys.stdin.read(1).lower()
+                    res2 = input_().lower()
                     if res2 == 'c':
                         break
                     elif len(re.findall("^%?[0-9]+$", res2)) > 0:
