@@ -7,20 +7,24 @@ import re
 from time import sleep
 from tempfile import NamedTemporaryFile as mktmp
 
+class utils:
 
-class cursor:
-    left = '\033[1D'
-    reset = '\033[K\033[1K\033[B\r\033[A\033[K\033[1K'
+    class cursor:
+        left = '\033[1D'
+        reset = '\033[K\033[1K\033[B\r\033[A\033[K\033[1K'
 
 
-def output_():
+    @staticmethod
     def input_():
         try:
             return input()  # python 3
         except:
             return raw_input()  # python 2
 
-    def panes(session):
+
+class gdb_utils_tmux:
+
+    def panes(self, session):
         p = subprocess.Popen(["tmux", "list-panes", "-t", session], stdout=subprocess.PIPE)
         res = p.stdout.read().decode("utf8")
         #print(f"res: {res}")
@@ -34,16 +38,19 @@ def output_():
         #print(f"panes: {panes_}, active: {active}")
         return [active, panes_]
 
-    tmux_env = os.getenv("TMUX")
-    if tmux_env:
-        session = tmux_env.split(",")[-1]
+    def output_(self):
+        session = os.getenv("TMUX").split(",")[-1]
+        if not session:
+            print("non-tmux session")
+            return -1
+
         pane_id = ""
-        [active, panes_] = panes(session)
+        [active, panes_] = self.panes(session)
         while True:
             sys.stdout.write(
                 f"[user] configure output pane, " +
                 "(s)elect or (c)ancel?  ")
-            sys.stdout.write(cursor.left)
+            sys.stdout.write(utils.cursor.left)
             sys.stdout.flush()
             res = sys.stdin.read(1).lower()
             if res == "c":
@@ -52,9 +59,9 @@ def output_():
                 subprocess.Popen(["tmux", "display-panes"])
                 while True:
                     sys.stdout.write("[user] enter pane # [#/c]:  ")
-                    sys.stdout.write(cursor.left)
+                    sys.stdout.write(utils.cursor.left)
                     sys.stdout.flush()
-                    res2 = input_().lower()
+                    res2 = utils.input_().lower()
                     if res2 == 'c':
                         break
                     elif len(re.findall("^%?[0-9]+$", res2)) > 0:
@@ -62,12 +69,12 @@ def output_():
                         break
 
                     # reset
-                    sys.stdout.write(cursor.reset)
+                    sys.stdout.write(utils.cursor.reset)
 
                 break
 
             # reset
-            sys.stdout.write(cursor.reset)
+            sys.stdout.write(utils.cursor.reset)
 
         if not pane_id:
             print("[error] no valid pane id set for dashboard output")
