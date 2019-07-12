@@ -66,8 +66,12 @@ class gdb_tmux:
             res = utils.input_().lower()
             if res == "c":
                 break
-            elif len(re.findall("^%?[0-9]+$", res)) > 0:
-                pane_id = re.findall("^%?[0-9]+$", res)[0]
+            elif len(re.findall("^[0-9]+$", res)) > 0:
+                pane_ = re.findall("^[0-9]+$", res)[0]
+                if int(pane_) < len(panes_):
+                    pane_id = re.findall("%[0-9]+", panes_[int(pane_)])[0]
+                    #print(f"pane_id: {pane_id}")
+                    break
 
             # reset
             utils.reset_line()
