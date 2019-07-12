@@ -5,7 +5,7 @@ import os
 import subprocess
 import re
 from time import sleep
-from tempfile import NamedTemporaryFile as mktmp
+from tempfile import NamedTemporaryFile as mktmp, gettempdir as tmpdir
 
 class utils:
 
@@ -118,5 +118,22 @@ class gdb_utils_tmux:
             gdb.execute(f"dashboard -output {tty}")
         else:
             print(f"no valid tty set")
+
+    def logging_tail(self, target=""):
+        session_ = gdb_tmux.session()
+        if not session_:
+            print("non-tmux session")
+            return
+
+        if not target:
+            target = os.path.join(tmpdir(), "gdb.trace")
+
+        pane_id = gdb_tmux.select_pane(session_)
+        if not pane_id:
+            print("[error] no valid pane id set for logging tail")
+            return
+        subprocess.call(["tmux", "send-keys", "-t", f"{session_}.{pane_id}", f"tail -f {target}", "ENTER"])
+        gdb.execute(f"set logging file {target}")
+        gdb.execute("set logging on")
 
 end
