@@ -94,7 +94,7 @@ class gdb_utils_tmux:
         session_ = gdb_tmux.session()
         if not session_:
             print("non-tmux session")
-            return -1
+            return
 
         pane_id = gdb_tmux.select_pane(session_)
         if not pane_id:
