@@ -125,7 +125,31 @@ class gdb_tmux:
         return pane_id
 
 
-class gdb_utils_tmux:
+class gdb_utils_tmux(gdb.Command):
+
+    class gdb_command_utils_tmux_dashboard_output(gdb.Command):
+        def __init__(self, gdb_utils_tmux_):
+            self.gdb_utils_tmux = gdb_utils_tmux_
+            gdb.Command.__init__(
+                self, 'utils_tmux dashboard_output', gdb.COMMAND_USER)
+
+        def invoke(self, arg, from_tty):
+            gdb_utils_tmux.dashboard_output()
+
+    class gdb_command_utils_tmux_logging_tail(gdb.Command):
+        def __init__(self, gdb_utils_tmux_):
+            self.gdb_utils_tmux = gdb_utils_tmux_
+            gdb.Command.__init__(
+                self, 'utils_tmux logging_tail', gdb.COMMAND_USER)
+
+        def invoke(self, arg, from_tty):
+            gdb_utils_tmux.logging_tail()
+
+    def __init__(self):
+        gdb.Command.__init__(
+            self, 'utils_tmux', gdb.COMMAND_USER, gdb.COMPLETE_NONE, True)
+        gdb_utils_tmux.gdb_command_utils_tmux_dashboard_output(self)
+        gdb_utils_tmux.gdb_command_utils_tmux_logging_tail(self)
 
     @staticmethod
     def dashboard_output():
