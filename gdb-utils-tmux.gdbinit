@@ -127,7 +127,8 @@ class gdb_tmux:
 
 class gdb_utils_tmux:
 
-    def dashboard_output(self):
+    @staticmethod
+    def dashboard_output():
         session_ = gdb_tmux.session()
         if not session_:
             print("non-tmux session")
@@ -156,7 +157,8 @@ class gdb_utils_tmux:
         else:
             print(f"no valid tty set")
 
-    def logging_tail(self, target=""):
+    @staticmethod
+    def logging_tail(target=""):
         session_ = gdb_tmux.session()
         if not session_:
             print("non-tmux session")
