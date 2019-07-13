@@ -7,6 +7,7 @@ import re
 from time import sleep
 from tempfile import NamedTemporaryFile as mktmp, gettempdir as tmpdir
 
+
 class utils:
 
     class cursor:
@@ -22,7 +23,7 @@ class utils:
     def input_():
         try:
             return input()  # python 3
-        except:
+        except Exception:
             return raw_input()  # python 2
 
 
@@ -38,17 +39,18 @@ class gdb_tmux:
 
     @staticmethod
     def panes(session_):
-        p = subprocess.Popen(["tmux", "list-panes", "-t", str(session_)], stdout=subprocess.PIPE)
+        p = subprocess.Popen(["tmux", "list-panes", "-t", str(session_)],
+                             stdout=subprocess.PIPE)
         res = p.stdout.read().decode("utf8")
-        #print(f"res: {res}")
+        # print(f"res: {res}")
         active = -1
         panes_ = []
         for s in res.rstrip('\n').split('\n'):
             x = re.findall("%[0-9]+", s)[0]
             panes_.append(x)
-            if len(re.findall("\(active\)$", s)) > 0:
+            if len(re.findall(r"\(active\)$", s)) > 0:
                 active = x
-        #print(f"panes: {panes_}, active: {active}")
+        # print(f"panes: {panes_}, active: {active}")
         return [active, panes_]
 
     @staticmethod
@@ -71,7 +73,7 @@ class gdb_tmux:
                 pane_ = re.findall("^[0-9]+$", res)[0]
                 if int(pane_) < len(panes_):
                     pane_id = re.findall("%[0-9]+", panes_[int(pane_)])[0]
-                    #print(f"pane_id: {pane_id}")
+                    # print(f"pane_id: {pane_id}")
                     break
 
             # reset
@@ -84,18 +86,23 @@ class gdb_tmux:
         err = 0
         pane_id = ""
 
-        [err_, pane_id_] = gdb_tmux.select_pane(session_, "set base pane for split")
+        [err_, pane_id_] = gdb_tmux.select_pane(
+                               session_, "set base pane for split")
         if err_ or not pane_id_:
             return [err_, pane_id]
 
         [active, panes_] = gdb_tmux.panes(session_)
-        subprocess.call(["tmux", "select-pane", "-t", f"{session_}.{pane_id_}"])
-        subprocess.call(["tmux", "split-window", "-t", str(session_), "-h"])
-        subprocess.call(["tmux", "select-pane", "-t", f"{session_}.{active}"])
+        subprocess.call(["tmux", "select-pane", "-t",
+                        f"{session_}.{pane_id_}"])
+        subprocess.call(["tmux", "split-window", "-t",
+                        str(session_), "-h"])
+        subprocess.call(["tmux", "select-pane", "-t",
+                        f"{session_}.{active}"])
         [_, panes_2] = gdb_tmux.panes(session_)
         added = [p for p in panes_2 if p not in panes_]
         if len(added) != 1:
-            print(f"[error] detected {len(added)} panes, failed to get new pane id")
+            print(f"[error] detected {len(added)} panes, " +
+                  "failed to get new pane id")
         else:
             pane_id = added[0]
 
@@ -187,9 +194,9 @@ class gdb_utils_tmux(gdb.Command):
         res = ""
         f = mktmp(delete=False)
         fn = f.name
-        f.close()
         # get tty
-        subprocess.call(["tmux", "send-keys", "-t", f"{session_}.{pane_id}", f"stty -echo && tty 1>{fn} && reset", "ENTER"])
+        subprocess.call(["tmux", "send-keys", "-t", f"{session_}.{pane_id}",
+                         f"stty -echo && tty 1>{fn} && reset", "ENTER"])
         sleep(1)  # wait for terminal to complete its work
         f = open(fn, "r")
         res = f.read()
@@ -212,13 +219,16 @@ class gdb_utils_tmux(gdb.Command):
         if not target:
             target = os.path.join(tmpdir(), "gdb.trace")
 
-        [err, pane_id] = gdb_tmux.set_pane(session_, "configure terminal logging-tail pane")
+        [err, pane_id] = gdb_tmux.set_pane(
+                             session_, "configure terminal logging-tail pane")
         if err or not pane_id:
             if err:
                 print("[error] no valid pane id set for logging tail")
             return
-        subprocess.call(["tmux", "send-keys", "-t", f"{session_}.{pane_id}", f"tail -f {target}", "ENTER"])
+        subprocess.call(["tmux", "send-keys", "-t", f"{session_}.{pane_id}",
+                        f"tail -f {target}", "ENTER"])
         gdb.execute(f"set logging file {target}")
         gdb.execute("set logging on")
+
 
 end
