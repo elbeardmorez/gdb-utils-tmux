@@ -55,7 +55,7 @@ class gdb_tmux:
     def select_pane(session_, msg="select pane"):
         pane_id = ""
 
-        [active, panes_] = gdb_tmux.panes(session_)
+        [_, panes_] = gdb_tmux.panes(session_)
         subprocess.Popen(["tmux", "display-panes"])
         while True:
             sys.stdout.write(
