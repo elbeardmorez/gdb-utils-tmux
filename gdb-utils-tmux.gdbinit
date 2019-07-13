@@ -114,6 +114,8 @@ class gdb_tmux:
             sys.stdout.flush()
             res = sys.stdin.read(1).lower()
             if res == "c":
+                sys.stdout.write('\n')
+                sys.stdout.flush()
                 break
             elif res == "s":
                 [err, pane_id_] = gdb_tmux.select_pane(session_)
