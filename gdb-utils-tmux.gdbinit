@@ -151,6 +151,10 @@ class gdb_utils_tmux(gdb.Command):
         gdb_utils_tmux.gdb_command_utils_tmux_dashboard_output(self)
         gdb_utils_tmux.gdb_command_utils_tmux_logging_tail(self)
 
+    def init(self):
+        session_ = gdb_tmux.session()
+        return True if session_ > -1 else False
+
     @staticmethod
     def dashboard_output():
         session_ = gdb_tmux.session()
