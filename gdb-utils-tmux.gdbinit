@@ -31,10 +31,10 @@ class gdb_tmux:
     @staticmethod
     def session():
         tmux_env = os.getenv("TMUX")
-        if not tmux_env:
-            print("non-tmux session")
-            return -1
-        return int(tmux_env.split(",")[-1])
+        if tmux_env:
+            return [0, int(tmux_env.split(",")[-1])]
+        else:
+            return [1, -1]
 
     @staticmethod
     def panes(session_):
@@ -164,18 +164,19 @@ class gdb_utils_tmux(gdb.Command):
         gdb_utils_tmux.gdb_command_utils_tmux_dashboard_output(self)
         gdb_utils_tmux.gdb_command_utils_tmux_logging_tail(self)
 
-    def init(self):
-        session_ = gdb_tmux.session()
-        return True if session_ > -1 else False
+    def is_session(self):
+        [err, session_] = gdb_tmux.session()
+        return False if err else True
 
     @staticmethod
     def dashboard_output():
-        session_ = gdb_tmux.session()
-        if not session_:
-            print("non-tmux session")
+        [err, session_] = gdb_tmux.session()
+        if err:
+            print("[error] non-tmux session")
             return
 
-        [err, pane_id] = gdb_tmux.set_pane(session_, "configure dashboard output pane")
+        [err, pane_id] = gdb_tmux.set_pane(
+                             session_, "configure dashboard output pane")
         if err or not pane_id:
             if err:
                 print("[error] no valid pane id set for dashboard output")
@@ -201,9 +202,9 @@ class gdb_utils_tmux(gdb.Command):
 
     @staticmethod
     def logging_tail(target=""):
-        session_ = gdb_tmux.session()
-        if not session_:
-            print("non-tmux session")
+        [err, session_] = gdb_tmux.session()
+        if err:
+            print("[error] non-tmux session")
             return
 
         if not target:
