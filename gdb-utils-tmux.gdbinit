@@ -59,6 +59,9 @@ class gdb_tmux:
         pane_id = ""
 
         [_, panes_] = gdb_tmux.panes(session_)
+        if len(panes_) == 1:
+            pane_id = panes_[0]
+            return [err, pane_id]
         subprocess.Popen(["tmux", "display-panes"])
         while True:
             sys.stdout.write(
