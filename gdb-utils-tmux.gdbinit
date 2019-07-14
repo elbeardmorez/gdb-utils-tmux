@@ -92,10 +92,8 @@ class gdb_tmux:
             return [err_, pane_id]
 
         [active, panes_] = gdb_tmux.panes(session_)
-        subprocess.call(["tmux", "select-pane", "-t",
-                        f"{session_}.{pane_id_}"])
         subprocess.call(["tmux", "split-window", "-t",
-                        str(session_), "-h"])
+                        f"{session_}.{pane_id_}", "-h"])
         subprocess.call(["tmux", "select-pane", "-t",
                         f"{session_}.{active}"])
         [_, panes_2] = gdb_tmux.panes(session_)
