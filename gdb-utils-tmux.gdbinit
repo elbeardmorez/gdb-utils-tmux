@@ -42,7 +42,6 @@ class gdb_tmux:
         p = subprocess.Popen(["tmux", "list-panes", "-t", str(session_)],
                              stdout=subprocess.PIPE)
         res = p.stdout.read().decode("utf8")
-        # print(f"res: {res}")
         active = -1
         panes_ = []
         for s in res.rstrip('\n').split('\n'):
@@ -50,7 +49,6 @@ class gdb_tmux:
             panes_.append(x)
             if len(re.findall(r"\(active\)$", s)) > 0:
                 active = x
-        # print(f"panes: {panes_}, active: {active}")
         return [active, panes_]
 
     @staticmethod
@@ -76,7 +74,6 @@ class gdb_tmux:
                 pane_ = re.findall("^[0-9]+$", res)[0]
                 if int(pane_) < len(panes_):
                     pane_id = re.findall("%[0-9]+", panes_[int(pane_)])[0]
-                    # print(f"pane_id: {pane_id}")
                     break
 
             # reset
