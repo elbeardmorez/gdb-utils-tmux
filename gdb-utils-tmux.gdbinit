@@ -61,10 +61,10 @@ class gdb_tmux:
             pane_id = panes_[0]
             return [err, pane_id]
         subprocess.Popen(["tmux", "display-panes"])
+        msg = msg.replace("pane", f"pane (0-{len(panes_) - 1})") \
+                  if "pane" in msg else msg + f" (0-{len(panes_)})"
         while True:
-            sys.stdout.write(
-                "[user]" + (f" {msg}, " if msg else "") +
-                f" (0-{len(panes_) - 1}) / (c)ancel [#/c]:  ")
+            sys.stdout.write(f"[user] {msg} or (c)ancel [#/c]:  ")
             sys.stdout.write(utils.cursor.left)
             sys.stdout.flush()
             res = utils.input_().lower()
@@ -115,8 +115,8 @@ class gdb_tmux:
         [_, panes_] = gdb_tmux.panes(session_)
         while True:
             sys.stdout.write(
-                "[user]" + (f" {msg}, " if msg else "") +
-                "(s)elect, (a)dd, or (c)ancel? [s/a/c]:  ")
+                "[user]" + (f" {msg}," if msg else "") +
+                " (s)elect, (a)dd, or (c)ancel? [s/a/c]:  ")
             sys.stdout.write(utils.cursor.left)
             sys.stdout.flush()
             res = sys.stdin.read(1).lower()
