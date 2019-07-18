@@ -67,7 +67,7 @@ class gdb_tmux:
         if len(panes_) == 1:
             pane_id = panes_[0]
             return [err, pane_id]
-        subprocess.Popen(["tmux", "display-panes"])
+        subprocess.Popen(["tmux", "display-panes", ""])
         msg = msg.replace("pane", f"pane (0-{len(panes_) - 1})") \
                   if "pane" in msg else msg + f" (0-{len(panes_)})"
         while True:
