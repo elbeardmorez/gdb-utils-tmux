@@ -21,10 +21,17 @@ class utils:
 
     @staticmethod
     def input_():
-        try:
-            return input()  # python 3
-        except Exception:
-            return raw_input()  # python 2
+        attempt = 0
+        while attempt < 5:
+            try:
+                if sys.version_info > (2, 7):
+                    return input()  # python 3
+                else:
+                    return raw_input()  # python 2
+                break
+            except Exception:
+                sleep(0.1)
+        attempt += 1
 
 
 class gdb_tmux:
