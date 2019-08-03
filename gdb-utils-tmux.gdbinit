@@ -59,7 +59,7 @@ class gdb_tmux:
         return [active, panes_]
 
     @staticmethod
-    def select_pane(session_, msg="select pane"):
+    def select_pane(session_, msg="select pane #"):
         err = 0
         pane_id = ""
 
@@ -68,10 +68,9 @@ class gdb_tmux:
             pane_id = panes_[0]
             return [err, pane_id]
         subprocess.Popen(["tmux", "display-panes", ""])
-        msg = msg.replace("pane", f"pane (0-{len(panes_) - 1})") \
-                  if "pane" in msg else msg + f" (0-{len(panes_)})"
+        panes_range = "0" if len(panes_) == 1 else "0-" + str(len(panes_) - 1)
         while True:
-            sys.stdout.write(f"[user] {msg} or (c)ancel [#/c]:  ")
+            sys.stdout.write(f"[user] {msg} or (c)ancel [{panes_range}|c]:  ")
             sys.stdout.write(utils.cursor.left)
             sys.stdout.flush()
             res = utils.input_().lower()
@@ -94,7 +93,7 @@ class gdb_tmux:
         pane_id = ""
 
         [err_, pane_id_] = gdb_tmux.select_pane(
-                               session_, "set base pane for split")
+                               session_, "set base pane # for split")
         if err_ or not pane_id_:
             return [err_, pane_id]
 
@@ -121,7 +120,7 @@ class gdb_tmux:
         while True:
             sys.stdout.write(
                 "[user]" + (f" {msg}," if msg else "") +
-                " (s)elect, (a)dd, or (c)ancel? [s/a/c]:  ")
+                " (s)elect, (a)dd, or (c)ancel? [s|a|c]:  ")
             sys.stdout.write(utils.cursor.left)
             sys.stdout.flush()
             res = sys.stdin.read(1).lower()
