@@ -69,6 +69,7 @@ class gdb_tmux:
             return [err, pane_id]
         subprocess.Popen(["tmux", "display-panes", ""])
         panes_range = "0" if len(panes_) == 1 else "0-" + str(len(panes_) - 1)
+        utils.reset_line()
         while True:
             sys.stdout.write(f"[user] {msg} or (c)ancel [{panes_range}|c]:  ")
             sys.stdout.write(utils.cursor.left)
