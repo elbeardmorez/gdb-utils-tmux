@@ -200,8 +200,10 @@ class gdb_utils_tmux(gdb.Command):
         f = mktmp(delete=False)
         fn = f.name
         # get tty
-        subprocess.call(["tmux", "send-keys", "-t", f"{session_}.{pane_id}", "C-c"])
-        subprocess.call(["tmux", "send-keys", "-t", f"{session_}.{pane_id}",
+        subprocess.call(["tmux", "send-keys", "-t",
+                         f"{session_}.{pane_id}", "C-c"])
+        subprocess.call(["tmux", "send-keys", "-t",
+                         f"{session_}.{pane_id}",
                          f"tty 1>{fn} && reset", "ENTER"])
         sleep(1)  # wait for terminal to complete its work
         f = open(fn, "r")
@@ -231,9 +233,11 @@ class gdb_utils_tmux(gdb.Command):
             if err:
                 print("[error] no valid pane id set for logging tail")
             return
-        subprocess.call(["tmux", "send-keys", "-t", f"{session_}.{pane_id}", "C-c"])
-        subprocess.call(["tmux", "send-keys", "-t", f"{session_}.{pane_id}",
-                        f"tail -f {target}", "ENTER"])
+        subprocess.call(["tmux", "send-keys", "-t",
+                         f"{session_}.{pane_id}", "C-c"])
+        subprocess.call(["tmux", "send-keys", "-t",
+                         f"{session_}.{pane_id}",
+                         f"tail -f {target}", "ENTER"])
         gdb.execute(f"set logging file {target}")
         gdb.execute("set logging on")
 
