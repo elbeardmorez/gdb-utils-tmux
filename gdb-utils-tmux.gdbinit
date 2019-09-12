@@ -39,6 +39,7 @@ class gdb_tmux:
     class pane:
         desc = ""
         id = ""
+        tty = ""
         active = False
 
     @staticmethod
@@ -51,16 +52,24 @@ class gdb_tmux:
 
     @staticmethod
     def panes(session_):
-        p = subprocess.Popen(["tmux", "list-panes", "-t", str(session_)],
-                             stdout=subprocess.PIPE)
+        format_ = '#{pane_index}|#{pane_id}|#{pane_tty}|' + \
+                  '#{pane_width}x#{pane_height}|' + \
+                  '#{history_size}/#{history_limit}|#{pane_active}'
+        IDX_ID = 1
+        IDX_TTY = 2
+        IDX_ACTIVE = 5
+        p = subprocess.Popen(["tmux", "list-panes", "-t", str(session_),
+                              "-F", format_], stdout=subprocess.PIPE)
         res = p.stdout.read().decode("utf8")
         panes_ = []
         for s in res.rstrip('\n').split('\n'):
+            parts = s.split('|')
             p = gdb_tmux.pane()
             panes_.append(p)
             p.desc = s
-            p.id = re.findall("%[0-9]+", s)[0]
-            if len(re.findall(r"\(active\)$", s)) > 0:
+            p.id = parts[IDX_ID]
+            p.tty = parts[IDX_TTY]
+            if parts[IDX_ACTIVE] == '1':
                 p.active = True
 
         return panes_
@@ -201,21 +210,8 @@ class gdb_utils_tmux(gdb.Command):
                 print("[error] no valid pane id set for dashboard output")
             return
 
-        res = ""
-        f = mktmp(delete=False)
-        fn = f.name
-        # get tty
-        subprocess.call(["tmux", "send-keys", "-t",
-                         f"{session_}.{pane_.id}", "C-c"])
-        subprocess.call(["tmux", "send-keys", "-t",
-                         f"{session_}.{pane_.id}",
-                         f"tty 1>{fn} && reset", "ENTER"])
-        sleep(1)  # wait for terminal to complete its work
-        f = open(fn, "r")
-        res = f.read()
-        f.close()
-        os.remove(fn)
-        tty = res.rstrip("\n")
+        # configure dashboard
+        tty = pane_.tty
         if os.path.exists(tty):
             print(f"pushing dashboard output to '{tty}'")
             gdb.execute(f"dashboard -output {tty}")
