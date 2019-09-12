@@ -36,6 +36,11 @@ class utils:
 
 class gdb_tmux:
 
+    class pane:
+        desc = ""
+        id = ""
+        active = False
+
     @staticmethod
     def session():
         tmux_env = os.getenv("TMUX")
@@ -49,24 +54,25 @@ class gdb_tmux:
         p = subprocess.Popen(["tmux", "list-panes", "-t", str(session_)],
                              stdout=subprocess.PIPE)
         res = p.stdout.read().decode("utf8")
-        active = -1
         panes_ = []
         for s in res.rstrip('\n').split('\n'):
-            x = re.findall("%[0-9]+", s)[0]
-            panes_.append(x)
+            p = gdb_tmux.pane()
+            panes_.append(p)
+            p.desc = s
+            p.id = re.findall("%[0-9]+", s)[0]
             if len(re.findall(r"\(active\)$", s)) > 0:
-                active = x
-        return [active, panes_]
+                p.active = True
+
+        return panes_
 
     @staticmethod
     def select_pane(session_, msg="select pane #"):
         err = 0
-        pane_id = ""
+        pane_ = None
 
-        [_, panes_] = gdb_tmux.panes(session_)
+        panes_ = gdb_tmux.panes(session_)
         if len(panes_) == 1:
-            pane_id = panes_[0]
-            return [err, pane_id]
+            return [err, panes_[0]]
         subprocess.Popen(["tmux", "display-panes", ""])
         panes_range = "0" if len(panes_) == 1 else "0-" + str(len(panes_) - 1)
         utils.reset_line()
@@ -78,46 +84,47 @@ class gdb_tmux:
             if res == "c":
                 break
             elif len(re.findall("^[0-9]+$", res)) > 0:
-                pane_ = re.findall("^[0-9]+$", res)[0]
-                if int(pane_) < len(panes_):
-                    pane_id = re.findall("%[0-9]+", panes_[int(pane_)])[0]
+                pane_idx = re.findall("^[0-9]+$", res)[0]
+                if int(pane_idx) < len(panes_):
+                    pane_ = panes_[int(pane_idx)]
                     break
 
             # reset
             utils.reset_line()
 
-        return [err, pane_id]
+        return [err, pane_]
 
     @staticmethod
     def add_pane(session_):
         err = 0
-        pane_id = ""
+        pane_ = None
 
-        [err_, pane_id_] = gdb_tmux.select_pane(
-                               session_, "set base pane # for split")
-        if err_ or not pane_id_:
-            return [err_, pane_id]
+        [err_, pane_] = gdb_tmux.select_pane(
+                            session_, "set base pane # for split")
+        if err_ or not pane_:
+            return [err_, pane_]
 
-        [active, panes_] = gdb_tmux.panes(session_)
+        panes_ = gdb_tmux.panes(session_)
         subprocess.call(["tmux", "split-window", "-t",
-                        f"{session_}.{pane_id_}", "-h"])
+                        f"{session_}.{pane_.id}", "-h"])
+        # reselect original active pane
+        active = next(p for p in panes_ if p.active)
         subprocess.call(["tmux", "select-pane", "-t",
-                        f"{session_}.{active}"])
-        [_, panes_2] = gdb_tmux.panes(session_)
-        added = [p for p in panes_2 if p not in panes_]
+                        f"{session_}.{active.id }"])
+        panes_2 = gdb_tmux.panes(session_)
+        added = [p for p in panes_2 if p.id not in [p.id for p in panes_]]
         if len(added) != 1:
             print(f"[error] detected {len(added)} panes, " +
                   "failed to get new pane id")
         else:
-            pane_id = added[0]
+            pane_ = added[0]
 
-        return [err, pane_id]
+        return [err, pane_]
 
     @staticmethod
     def set_pane(session_, msg="configure output pane"):
         err = 0
-        pane_id = ""
-        [_, panes_] = gdb_tmux.panes(session_)
+        pane_ = None
         while True:
             sys.stdout.write(
                 "[user]" + (f" {msg}," if msg else "") +
@@ -130,26 +137,24 @@ class gdb_tmux:
                 sys.stdout.flush()
                 break
             elif res == "s":
-                [err, pane_id_] = gdb_tmux.select_pane(session_)
+                [err, pane_] = gdb_tmux.select_pane(session_)
                 if err:
                     break
-                elif pane_id_:
-                    pane_id = pane_id_
+                elif pane_:
                     break
             elif res == "a":
-                [err, pane_id_] = gdb_tmux.add_pane(session_)
+                [err, pane_] = gdb_tmux.add_pane(session_)
                 if err:
                     break
-                elif pane_id_:
-                    pane_id = pane_id_
+                elif pane_:
                     break
 
-            if pane_id:
+            if pane_:
                 break
             # reset
             utils.reset_line()
 
-        return [err, pane_id]
+        return [err, pane_]
 
 
 class gdb_utils_tmux(gdb.Command):
@@ -189,9 +194,9 @@ class gdb_utils_tmux(gdb.Command):
             print("[error] non-tmux session")
             return
 
-        [err, pane_id] = gdb_tmux.set_pane(
+        [err, pane_] = gdb_tmux.set_pane(
                              session_, "configure dashboard output pane")
-        if err or not pane_id:
+        if err or not pane_:
             if err:
                 print("[error] no valid pane id set for dashboard output")
             return
@@ -201,9 +206,9 @@ class gdb_utils_tmux(gdb.Command):
         fn = f.name
         # get tty
         subprocess.call(["tmux", "send-keys", "-t",
-                         f"{session_}.{pane_id}", "C-c"])
+                         f"{session_}.{pane_.id}", "C-c"])
         subprocess.call(["tmux", "send-keys", "-t",
-                         f"{session_}.{pane_id}",
+                         f"{session_}.{pane_.id}",
                          f"tty 1>{fn} && reset", "ENTER"])
         sleep(1)  # wait for terminal to complete its work
         f = open(fn, "r")
@@ -227,16 +232,16 @@ class gdb_utils_tmux(gdb.Command):
         if not target:
             target = os.path.join(tmpdir(), "gdb.trace")
 
-        [err, pane_id] = gdb_tmux.set_pane(
+        [err, pane_] = gdb_tmux.set_pane(
                              session_, "configure terminal logging-tail pane")
-        if err or not pane_id:
+        if err or not pane_:
             if err:
                 print("[error] no valid pane id set for logging tail")
             return
         subprocess.call(["tmux", "send-keys", "-t",
-                         f"{session_}.{pane_id}", "C-c"])
+                         f"{session_}.{pane_.id}", "C-c"])
         subprocess.call(["tmux", "send-keys", "-t",
-                         f"{session_}.{pane_id}",
+                         f"{session_}.{pane_.id}",
                          f"tail -f {target}", "ENTER"])
         gdb.execute(f"set logging file {target}")
         gdb.execute("set logging on")
