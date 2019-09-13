@@ -274,7 +274,11 @@ class gdb_utils_tmux(gdb.Command):
                          f"{session_}.{pane_.id}",
                          f"tail -f {target}", "ENTER"])
         gdb.execute(f"set logging file {target}")
-        gdb.execute("set logging on")
+
+        # logging state
+        if gdb.execute("show logging redirect",
+                       to_string=True).find("Currently logging") > -1:
+            gdb.execute("set logging on")
 
     def state_load(self):
         if not self.state:
