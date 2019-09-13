@@ -8,6 +8,14 @@ from time import sleep
 from tempfile import NamedTemporaryFile as mktmp, gettempdir as tmpdir
 
 
+class state(dict):
+
+    def __init__(self):
+        super()
+        self["tty_dashboard"] = ""
+        self["tty_logging"] = ""
+
+
 class utils:
 
     class cursor:
@@ -168,6 +176,11 @@ class gdb_tmux:
 
 class gdb_utils_tmux(gdb.Command):
 
+    trace_file = "gdb.trace"
+    state_file = "gdb_utils_tmux.state"
+
+    state = None
+
     class gdb_command_utils_tmux_dashboard_output(gdb.Command):
         def __init__(self, gdb_utils_tmux_):
             self.gdb_utils_tmux = gdb_utils_tmux_
@@ -175,7 +188,7 @@ class gdb_utils_tmux(gdb.Command):
                 self, 'utils_tmux dashboard_output', gdb.COMMAND_USER)
 
         def invoke(self, arg, from_tty):
-            gdb_utils_tmux.dashboard_output()
+            self.gdb_utils_tmux.dashboard_output()
 
     class gdb_command_utils_tmux_logging_tail(gdb.Command):
         def __init__(self, gdb_utils_tmux_):
@@ -184,56 +197,77 @@ class gdb_utils_tmux(gdb.Command):
                 self, 'utils_tmux logging_tail', gdb.COMMAND_USER)
 
         def invoke(self, arg, from_tty):
-            gdb_utils_tmux.logging_tail()
+            self.gdb_utils_tmux.logging_tail()
 
     def __init__(self):
         gdb.Command.__init__(
             self, 'utils_tmux', gdb.COMMAND_USER, gdb.COMPLETE_NONE, True)
         gdb_utils_tmux.gdb_command_utils_tmux_dashboard_output(self)
         gdb_utils_tmux.gdb_command_utils_tmux_logging_tail(self)
+        self.state_load()
 
     def is_session(self):
         [err, session_] = gdb_tmux.session()
         return False if err else True
 
-    @staticmethod
-    def dashboard_output():
+    def dashboard_output(self):
         [err, session_] = gdb_tmux.session()
         if err:
             print("[error] non-tmux session")
             return
 
-        [err, pane_] = gdb_tmux.set_pane(
-                             session_, "configure dashboard output pane")
-        if err or not pane_:
-            if err:
-                print("[error] no valid pane id set for dashboard output")
-            return
+        tty = self.state["tty_dashboard"]
+        pane_ = None
+        if os.path.exists(tty):
+            panes_ = [p for p in gdb_tmux.panes(session_) if p.tty == tty]
+            if len(panes_) == 1:
+                pane_ = panes_[0]
+
+        if not pane_:
+            self.state_set("tty_dashboard", "")
+            [err, pane_] = gdb_tmux.set_pane(
+                               session_,
+                               "configure dashboard output pane")
+            if err or not pane_:
+                if err:
+                    print("[error] no valid pane id set for dashboard output")
+                return
+            tty = pane_.tty
+            self.state_set("tty_dashboard", tty)
 
         # configure dashboard
-        tty = pane_.tty
-        if os.path.exists(tty):
-            print(f"pushing dashboard output to '{tty}'")
-            gdb.execute(f"dashboard -output {tty}")
-        else:
-            print(f"no valid tty set")
+        print(f"pushing dashboard output to '{tty}'")
+        gdb.execute(f"dashboard -output {tty}")
 
-    @staticmethod
-    def logging_tail(target=""):
+    def logging_tail(self, target=""):
         [err, session_] = gdb_tmux.session()
         if err:
             print("[error] non-tmux session")
             return
 
         if not target:
-            target = os.path.join(tmpdir(), "gdb.trace")
+            target = os.path.join(tmpdir(), self.trace_file)
 
-        [err, pane_] = gdb_tmux.set_pane(
-                             session_, "configure terminal logging-tail pane")
-        if err or not pane_:
-            if err:
-                print("[error] no valid pane id set for logging tail")
-            return
+        tty = self.state["tty_logging"]
+        pane_ = None
+        if os.path.exists(tty):
+            panes_ = [p for p in gdb_tmux.panes(session_) if p.tty == tty]
+            if len(panes_) == 1:
+                pane_ = panes_[0]
+
+        if not pane_:
+            self.state_set("tty_logging", "")
+            [err, pane_] = gdb_tmux.set_pane(
+                               session_,
+                               "configure terminal logging-tail pane")
+            if err or not pane_:
+                if err:
+                    print("[error] no valid pane id set for logging tail")
+                return
+            tty = pane_.tty
+            self.state_set("tty_logging", tty)
+
+        # configure logging tail
         subprocess.call(["tmux", "send-keys", "-t",
                          f"{session_}.{pane_.id}", "C-c"])
         subprocess.call(["tmux", "send-keys", "-t",
@@ -242,5 +276,38 @@ class gdb_utils_tmux(gdb.Command):
         gdb.execute(f"set logging file {target}")
         gdb.execute("set logging on")
 
+    def state_load(self):
+        if not self.state:
+            # rebuild
+            self.state_rebuild()
+        for k in ["tty_dashboard", "tty_logging"]:
+            if not os.path.exists(self.state[k]):
+                self.state[k] = ""
+
+    def state_rebuild(self):
+        self.state = state()
+        target = os.path.join(tmpdir(), self.state_file)
+        if not os.path.exists(target):
+            return
+
+        f = open(target, "r")
+        data = [line.rstrip('\n') for line in f.readlines()]
+        f.close()
+        for [k, v] in [r.split('|') for r in data]:
+            self.state[k] = v
+
+    def state_set(self, key, value):
+        self.state[key] = value
+        self.state_persist()
+
+    def state_persist(self):
+        if not self.state:
+            print("[info] no state object set")
+            return
+        data = '\n'.join([f"{k}|{v}" for k, v in self.state.items()])
+        target = os.path.join(tmpdir(), self.state_file)
+        f = open(target, "w")
+        f.write(data)
+        f.close()
 
 end
