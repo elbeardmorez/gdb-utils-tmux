@@ -268,6 +268,7 @@ class gdb_utils_tmux(gdb.Command):
             self.state_set("tty_logging", tty)
 
         # configure logging tail
+        print(f"tailing logs on '{tty}'")
         subprocess.call(["tmux", "send-keys", "-t",
                          f"{session_}.{pane_.id}", "C-c"])
         subprocess.call(["tmux", "send-keys", "-t",
