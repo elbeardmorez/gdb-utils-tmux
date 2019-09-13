@@ -176,6 +176,8 @@ class gdb_tmux:
 
 class gdb_utils_tmux(gdb.Command):
 
+    mode = "manual"
+
     trace_file = "gdb.trace"
     state_file = "gdb_utils_tmux.state"
 
@@ -188,7 +190,7 @@ class gdb_utils_tmux(gdb.Command):
                 self, 'utils_tmux dashboard_output', gdb.COMMAND_USER)
 
         def invoke(self, arg, from_tty):
-            self.gdb_utils_tmux.dashboard_output()
+            self.gdb_utils_tmux.dashboard_output(mode="cmd")
 
     class gdb_command_utils_tmux_logging_tail(gdb.Command):
         def __init__(self, gdb_utils_tmux_):
@@ -197,7 +199,7 @@ class gdb_utils_tmux(gdb.Command):
                 self, 'utils_tmux logging_tail', gdb.COMMAND_USER)
 
         def invoke(self, arg, from_tty):
-            self.gdb_utils_tmux.logging_tail()
+            self.gdb_utils_tmux.logging_tail(mode="cmd")
 
     def __init__(self):
         gdb.Command.__init__(
@@ -210,15 +212,41 @@ class gdb_utils_tmux(gdb.Command):
         [err, session_] = gdb_tmux.session()
         return False if err else True
 
-    def dashboard_output(self):
+    def dashboard_output(self, mode=""):
         [err, session_] = gdb_tmux.session()
         if err:
             print("[error] non-tmux session")
             return
 
+        if not mode:
+            mode = self.mode
+
         tty = self.state["tty_dashboard"]
         pane_ = None
-        if os.path.exists(tty):
+
+        if os.path.exists(tty) and mode == "manual":
+            while True:
+                sys.stdout.write(
+                    f"[user] use existing psuedo terminal " +
+                    f"'{tty}' for dashboard output, " +
+                    "(y)es, (n)o or (c)ancel? [y|n|c]:  ")
+                sys.stdout.write(utils.cursor.left)
+                sys.stdout.flush()
+                res = sys.stdin.read(1).lower()
+                if res == "c":
+                    sys.stdout.write('\n')
+                    sys.stdout.flush()
+                    return
+                elif res == "y":
+                    break
+                elif res == "n":
+                    tty = ""
+                    break
+
+                # reset
+                utils.reset_line()
+
+        if os.path.exists(tty) and mode == "auto":
             panes_ = [p for p in gdb_tmux.panes(session_) if p.tty == tty]
             if len(panes_) == 1:
                 pane_ = panes_[0]
@@ -239,18 +267,43 @@ class gdb_utils_tmux(gdb.Command):
         print(f"pushing dashboard output to '{tty}'")
         gdb.execute(f"dashboard -output {tty}")
 
-    def logging_tail(self, target=""):
+    def logging_tail(self, target="", mode=""):
         [err, session_] = gdb_tmux.session()
         if err:
             print("[error] non-tmux session")
             return
 
+        if not mode:
+            mode = self.mode
         if not target:
             target = os.path.join(tmpdir(), self.trace_file)
 
         tty = self.state["tty_logging"]
         pane_ = None
-        if os.path.exists(tty):
+
+        if os.path.exists(tty) and mode == "manual":
+            while True:
+                sys.stdout.write(
+                    f"[user] use existing psuedo terminal " +
+                    f"'{tty}' for logging tail, " +
+                    "(y)es, (n)o or (c)ancel? [y|n|c]:  ")
+                sys.stdout.write(utils.cursor.left)
+                sys.stdout.flush()
+                res = sys.stdin.read(1).lower()
+                if res == "c":
+                    sys.stdout.write('\n')
+                    sys.stdout.flush()
+                    return
+                elif res == "y":
+                    break
+                elif res == "n":
+                    tty = ""
+                    break
+
+                # reset
+                utils.reset_line()
+
+        if os.path.exists(tty) and mode == "auto":
             panes_ = [p for p in gdb_tmux.panes(session_) if p.tty == tty]
             if len(panes_) == 1:
                 pane_ = panes_[0]
