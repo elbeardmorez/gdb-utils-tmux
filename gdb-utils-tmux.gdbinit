@@ -41,6 +41,24 @@ class utils:
                 sleep(0.1)
         attempt += 1
 
+    @staticmethod
+    def decision(prompt, options, display_options=True, multi_char=False):
+        options_ = "" if not display_options \
+                      else f"[{'|'.join(list(options))}]"
+        while True:
+            sys.stdout.write(" ".join([prompt, options_]) + ":  ")
+            sys.stdout.write(utils.cursor.left)
+            sys.stdout.flush()
+            res = ""
+            if multi_char:
+                res = utils.input_().lower()
+            else:
+                res = sys.stdin.read(1).lower()
+            if res in options:
+                return res
+            # reset
+            utils.reset_line()
+
 
 class gdb_tmux:
 
@@ -93,21 +111,17 @@ class gdb_tmux:
         subprocess.Popen(["tmux", "display-panes", ""])
         panes_range = "0" if len(panes_) == 1 else "0-" + str(len(panes_) - 1)
         utils.reset_line()
+
+        q = f"[user] {msg} or (c)ancel [{panes_range}|c]"
         while True:
-            sys.stdout.write(f"[user] {msg} or (c)ancel [{panes_range}|c]:  ")
-            sys.stdout.write(utils.cursor.left)
-            sys.stdout.flush()
-            res = utils.input_().lower()
+            res = utils.decision(
+                     q, [str(i) for i in range(len(panes_))] + ['c'],
+                     display_options=False, multi_char=True)
             if res == "c":
                 break
-            elif len(re.findall("^[0-9]+$", res)) > 0:
-                pane_idx = re.findall("^[0-9]+$", res)[0]
-                if int(pane_idx) < len(panes_):
-                    pane_ = panes_[int(pane_idx)]
-                    break
-
-            # reset
-            utils.reset_line()
+            else:
+                pane_ = panes_[int(res)]
+                break
 
         return [err, pane_]
 
@@ -142,13 +156,11 @@ class gdb_tmux:
     def set_pane(session_, msg="configure output pane"):
         err = 0
         pane_ = None
+
+        q = "[user]" + (f" {msg}," if msg else "") + \
+            " (s)elect, (a)dd, or (c)ancel?"
         while True:
-            sys.stdout.write(
-                "[user]" + (f" {msg}," if msg else "") +
-                " (s)elect, (a)dd, or (c)ancel? [s|a|c]:  ")
-            sys.stdout.write(utils.cursor.left)
-            sys.stdout.flush()
-            res = sys.stdin.read(1).lower()
+            res = utils.decision(q, "sac")
             if res == "c":
                 sys.stdout.write('\n')
                 sys.stdout.flush()
@@ -225,28 +237,17 @@ class gdb_utils_tmux(gdb.Command):
         pane_ = None
 
         if os.path.exists(tty) and mode == "manual":
-            while True:
-                sys.stdout.write(
-                    f"[user] use existing psuedo terminal " +
-                    f"'{tty}' for dashboard output, " +
-                    "(y)es, (n)o or (c)ancel? [y|n|c]:  ")
-                sys.stdout.write(utils.cursor.left)
+            q = f"[user] use existing psuedo terminal '{tty}' for " + \
+                "dashboard output, (y)es, (n)o or (c)ancel?"
+            res = utils.decision(q, "ync")
+            if res == 'c':
+                sys.stdout.write('\n')
                 sys.stdout.flush()
-                res = sys.stdin.read(1).lower()
-                if res == "c":
-                    sys.stdout.write('\n')
-                    sys.stdout.flush()
-                    return
-                elif res == "y":
-                    break
-                elif res == "n":
-                    tty = ""
-                    break
+                return
+            elif res == 'n':
+                tty = ""
 
-                # reset
-                utils.reset_line()
-
-        if os.path.exists(tty) and mode == "auto":
+        if os.path.exists(tty) and mode != "cmd":
             panes_ = [p for p in gdb_tmux.panes(session_) if p.tty == tty]
             if len(panes_) == 1:
                 pane_ = panes_[0]
@@ -282,28 +283,17 @@ class gdb_utils_tmux(gdb.Command):
         pane_ = None
 
         if os.path.exists(tty) and mode == "manual":
-            while True:
-                sys.stdout.write(
-                    f"[user] use existing psuedo terminal " +
-                    f"'{tty}' for logging tail, " +
-                    "(y)es, (n)o or (c)ancel? [y|n|c]:  ")
-                sys.stdout.write(utils.cursor.left)
+            q = f"[user] use existing psuedo terminal '{tty}' for " + \
+                "logging tail, (y)es, (n)o or (c)ancel?"
+            res = utils.decision(q, "ync")
+            if res == 'c':
+                sys.stdout.write('\n')
                 sys.stdout.flush()
-                res = sys.stdin.read(1).lower()
-                if res == "c":
-                    sys.stdout.write('\n')
-                    sys.stdout.flush()
-                    return
-                elif res == "y":
-                    break
-                elif res == "n":
-                    tty = ""
-                    break
+                return
+            elif res == 'n':
+                tty = ""
 
-                # reset
-                utils.reset_line()
-
-        if os.path.exists(tty) and mode == "auto":
+        if os.path.exists(tty) and mode != "cmd":
             panes_ = [p for p in gdb_tmux.panes(session_) if p.tty == tty]
             if len(panes_) == 1:
                 pane_ = panes_[0]
