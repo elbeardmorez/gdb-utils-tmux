@@ -101,6 +101,11 @@ class gdb_tmux:
         return panes_
 
     @staticmethod
+    def pane_valid(session_, tty):
+        panes_ = gdb_tmux.panes(session_)
+        return True if next((p for p in panes_ if p.tty == tty), None) else False
+
+    @staticmethod
     def select_pane(session_, msg="select pane #"):
         err = 0
         pane_ = None
@@ -236,6 +241,9 @@ class gdb_utils_tmux(gdb.Command):
         tty = self.state["tty_dashboard"]
         pane_ = None
 
+        if not gdb_tmux.pane_valid(session_, tty):
+            tty = ""
+
         if os.path.exists(tty) and mode == "manual":
             q = f"[user] use existing psuedo terminal '{tty}' for " + \
                 "dashboard output, (y)es, (n)o or (c)ancel?"
@@ -281,6 +289,9 @@ class gdb_utils_tmux(gdb.Command):
 
         tty = self.state["tty_logging"]
         pane_ = None
+
+        if not gdb_tmux.pane_valid(session_, tty):
+            tty = ""
 
         if os.path.exists(tty) and mode == "manual":
             q = f"[user] use existing psuedo terminal '{tty}' for " + \
